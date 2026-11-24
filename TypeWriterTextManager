@@ -1,0 +1,129 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using Unity.Cinemachine;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class TextManager : MonoBehaviour
+{
+    [Header("Dialogue Settings")]
+    [TextArea(3, 50)] public string[] lines;
+    public float textSpeed = 0.05f;
+
+    [Header("UI References")]
+    public GameObject canvas;
+    public TextMeshProUGUI dialogueText;
+
+    private int currentLineIndex;
+    private bool isInRange;
+    private bool isTyping;
+
+    public enum NPCTyp {FToTalk, WalkToTalk} //walkToTake is just when the player enters the range of the NPC
+    public NPCTyp Npc;
+
+    private Coroutine typingCoroutine;
+
+    public CinemachineCamera cam;
+    public Transform OtherTarget;
+    public Transform Player;
+    public Transform target;
+    public float camZoom;
+    public float zoomSpeed;
+    public float playerZoom;
+
+    public float targetZoom = 5f;
+
+    private void Update()
+    {
+        // Activate dialogue with F key
+        if (Input.GetButtonDown("Interact") && isInRange && Npc == NPCTyp.FToTalk)
+        {
+            if (!canvas.activeSelf)
+            {
+                StartDialogue();
+            }
+            else if (!isTyping && isInRange) //if you dont want skippable diologe remove this and figure out the rest
+            {
+                NextLine();
+            }
+        }
+        if (isInRange && Npc == NPCTyp.WalkToTalk)
+        {
+            if (!canvas.activeSelf)
+            {
+                Debug.Log("I'm Talking now, says " + gameObject.name);
+                StartDialogue();
+            }
+        }
+    }
+    private void StartDialogue()
+    {
+        cam.Lens.OrthographicSize = Mathf.Lerp(cam.Lens.OrthographicSize, targetZoom, Time.deltaTime * zoomSpeed);
+        canvas.SetActive(true); currentLineIndex = 0;
+        dialogueText.text = string.Empty;
+        if (typingCoroutine != null)
+            StopCoroutine(typingCoroutine);
+        typingCoroutine = StartCoroutine(TypeLine()); cam.Target.TrackingTarget = OtherTarget;
+        if (camZoom != 0)
+        {
+            targetZoom = camZoom;
+        }
+    }
+    private IEnumerator TypeLine()
+    {
+        isTyping = true;
+        dialogueText.text = "";
+        foreach (char c in lines[currentLineIndex].ToCharArray())
+        {
+            dialogueText.text += c;
+            yield return new WaitForSeconds(textSpeed);
+        }
+        isTyping = false;
+    }
+    private void NextLine()
+    {
+        if (currentLineIndex < lines.Length - 1)
+        {
+            currentLineIndex++;
+            dialogueText.text = string.Empty;
+            if (typingCoroutine != null)
+            typingCoroutine = StartCoroutine(TypeLine());
+        }
+        else
+        {
+            EndDialogue();
+        }
+    }
+    private void EndDialogue()
+    {
+        StopCoroutine(typingCoroutine);
+        canvas.SetActive(false);
+        cam.Target.TrackingTarget = Player;
+        cam.Lens.OrthographicSize = Mathf.Lerp(cam.Lens.OrthographicSize, targetZoom, Time.deltaTime * zoomSpeed);
+        camZoom = playerZoom;
+        dialogueText.text = string.Empty;
+    }
+    // Detect when player enters or leaves range
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Player"))
+        {
+            isInRange = true;
+        }
+    }
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Player"))
+        {
+            if( Npc == NPCTyp.FToTalk && canvas.activeSelf)
+                EndDialogue();
+
+            if( Npc == NPCTyp.WalkToTalk && canvas.activeSelf)
+                EndDialogue();
+
+            isInRange = false;
+        }
+    }
+}
