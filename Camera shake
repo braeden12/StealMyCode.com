@@ -1,0 +1,23 @@
+using UnityEngine;
+using Unity.Cinemachine;
+using Unity.VisualScripting;
+
+public class CameraShakeManager : MonoBehaviour //works for 2D i dont know about 3D
+{
+    public static CameraShakeManager instance;
+
+    [SerializeField] private float globerShakeForce = 1f;
+
+    private void Awake()
+    {
+        if(instance == null)
+        {
+            instance = this;
+        }
+    }
+
+    public void CameraShake(CinemachineImpulseSource impulseSource)
+    {
+       impulseSource.GenerateImpulseWithForce(globerShakeForce);
+    }
+}
